@@ -27,8 +27,7 @@ export class CreateOrganizationDto {
   logoUrl?: string;
 
   @IsEmail()
-  @IsOptional()
-  contactEmail?: string;
+  contactEmail: string;
 
   @IsString()
   @IsOptional()

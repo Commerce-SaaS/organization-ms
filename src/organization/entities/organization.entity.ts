@@ -26,7 +26,7 @@ export class Organization {
   address?: string;
 
   @OneToMany(() => OrganizationDomain, (d) => d.organization)
-  domains: OrganizationDomain[]
+  domains: OrganizationDomain[];
 
   @Column()
   ownerId: string;
@@ -34,8 +34,8 @@ export class Organization {
   @OneToMany(() => UserOrganization, (userOrg) => userOrg.organization)
   userOrganizations: UserOrganization[];
 
-  @Column({ nullable: true })
-  stripeAccountId?: string;
+  @Column({ nullable: true, type: 'varchar' })
+  stripeAccountId?: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

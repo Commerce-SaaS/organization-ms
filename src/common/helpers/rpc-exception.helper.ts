@@ -26,7 +26,12 @@ export class RpcExceptionHelper {
       statusCode: HttpStatus.CONFLICT,
     });
   }
-
+  static forbidden(entity: string): never {
+    throw new RpcException({
+      message: `${entity} not found`,
+      statusCode: HttpStatus.FORBIDDEN,
+    });
+  }
   static notFound(entity: string): never {
     throw new RpcException({
       message: `${entity} not found`,

@@ -10,7 +10,6 @@ import Redis from 'ioredis';
 import { UserAuthzRefreshDto } from './dto/user_authz_refresh_event.dto';
 import { UserAuthzRefreshReason } from './enums/user_authz_refresh_reason.enum';
 import { OrganizationRole } from './enums/organization-roles.enum';
-import { email } from 'zod';
 
 @Injectable()
 export class UserOrganizationService {
@@ -33,7 +32,11 @@ export class UserOrganizationService {
         role,
       });
 
-      return await this.userOrganizationRepository.save(userOrganization);
+      const saved =
+        await this.userOrganizationRepository.save(userOrganization);
+      await this.rebuildUserOrgs(userId);
+
+      return saved;
     } catch (error) {
       RpcExceptionHelper.handle(error);
     }
@@ -55,7 +58,9 @@ export class UserOrganizationService {
         );
       }
 
-      return await this.userOrganizationRepository.save(entityToUpdate);
+      const saved = await this.userOrganizationRepository.save(entityToUpdate);
+      await this.rebuildUserOrgs(entityToUpdate.userId);
+      return saved;
     } catch (error) {
       RpcExceptionHelper.handle(error);
     }
@@ -77,9 +82,8 @@ export class UserOrganizationService {
         );
       }
 
-      // 2# Apply soft delete updates
       await this.userOrganizationRepository.softDelete(id);
-
+      await this.rebuildUserOrgs(userOrganization.userId);
       return { message: `UserOrganization with id: ${id} was soft deleted` };
     } catch (error) {
       RpcExceptionHelper.handle(error);
@@ -93,7 +97,7 @@ export class UserOrganizationService {
         relations: ['organization'],
       });
 
-      return this.trasnformOrganizationStructure(res);
+      return this.transformOrganizationStructure(res);
     } catch (error) {
       RpcExceptionHelper.handle(error);
     }
@@ -105,8 +109,7 @@ export class UserOrganizationService {
       const res = await this.userOrganizationRepository.find({
         where: { organization: { id } },
       });
-
-      return this.trasnformUserStructure(res);
+      return this.transformUserStructure(res);
     } catch (error) {
       RpcExceptionHelper.handle(error);
     }
@@ -115,9 +118,10 @@ export class UserOrganizationService {
   async handleUserAuthzRefresh(data: UserAuthzRefreshDto) {
     const { userId, reason, organizationId } = data;
 
-    const key = `user:${userId}:orgs`;
-
-    if (reason === UserAuthzRefreshReason.REGISTER_CUSTOMER) {
+    if (
+      reason === UserAuthzRefreshReason.REGISTER_CUSTOMER ||
+      reason === UserAuthzRefreshReason.REGISTER_CUSTOMER_OAUTH
+    ) {
       await this.create({
         organizationId,
         role: OrganizationRole.CUSTOMER,
@@ -125,21 +129,7 @@ export class UserOrganizationService {
       });
     }
 
-    const orgs = await this.userOrganizationRepository.find({
-      where: { userId },
-      select: ['organization', 'role'],
-      relations: ['organization'],
-    });
-
-    const list = orgs.map((o) => ({
-      organizationId: o.organization.id,
-      role: o.role,
-      email: o.organization.contactEmail,
-      stripeAccountId: o.organization.stripeAccountId,
-    }));
-
-    await this.redis.set(key, JSON.stringify(list), 'EX', 3600);
-    return list;
+    return this.rebuildUserOrgs(userId);
   }
 
   async restoreUserOrganization(id: string) {
@@ -160,7 +150,7 @@ export class UserOrganizationService {
       }
 
       await this.userOrganizationRepository.restore(id);
-
+      await this.rebuildUserOrgs(userOrganization.userId);
       return { message: `UserOrganization with id: ${id} was restored` };
     } catch (error) {
       RpcExceptionHelper.handle(error);
@@ -176,22 +166,38 @@ export class UserOrganizationService {
     }
   }
 
-  private trasnformUserStructure(userOrganizations: any) {
+  private async rebuildUserOrgs(userId: string) {
+    const orgs = await this.userOrganizationRepository.find({
+      where: { userId },
+      select: ['organization', 'role'],
+      relations: ['organization'],
+    });
+    const list = orgs.map((o) => ({
+      organizationId: o.organization.id,
+      role: o.role,
+      email: o.organization.contactEmail,
+      stripeAccountId: o.organization.stripeAccountId,
+    }));
+    await this.redis.set(
+      `user:${userId}:orgs`,
+      JSON.stringify(list),
+      'EX',
+      3600,
+    );
+    return list;
+  }
+
+  private transformUserStructure(userOrganizations: any) {
     return userOrganizations.map((uo) => ({
-      id: uo.id,
+      membershipId: uo.id,
+      userId: uo.userId,
       role: uo.role,
-      user: {
-        id: uo.user.id,
-        name: uo.user.name,
-        email: uo.user.email,
-        role: uo.user.role,
-      },
     }));
   }
 
-  private trasnformOrganizationStructure(userOrganizations: any) {
+  private transformOrganizationStructure(userOrganizations: any) {
     return userOrganizations.map((uo) => ({
-      id: uo.id,
+      membershipId: uo.id,
       role: uo.role,
       organization: {
         id: uo.organization.id,

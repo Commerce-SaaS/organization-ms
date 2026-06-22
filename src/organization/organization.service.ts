@@ -1,28 +1,26 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity';
 import { RpcExceptionHelper } from 'src/common/helpers/rpc-exception.helper';
-import { PAYMENTS_EVENTS_CLIENT } from 'src/config/services';
-import { ClientProxy } from '@nestjs/microservices';
-import { SUBSCRIPTION_PATTERNS } from './patterns/suscription_patterns';
 import { UserOrganizationService } from 'src/user_organization/user_organization.service';
 import { OrganizationRole } from 'src/user_organization/enums/organization-roles.enum';
+import { UserAuthzRefreshReason } from 'src/user_organization/enums/user_authz_refresh_reason.enum';
 
 @Injectable()
 export class OrganizationService {
+  private readonly logger = new Logger(OrganizationService.name);
   constructor(
     @InjectRepository(Organization)
     private readonly organizationRepository: Repository<Organization>,
     private readonly userOrganizationService: UserOrganizationService,
-    @Inject(PAYMENTS_EVENTS_CLIENT)
-    private readonly paymentsClient: ClientProxy,
   ) {}
 
   async create(createOrganizationDto: CreateOrganizationDto) {
     const { name, ownerId } = createOrganizationDto;
+
     try {
       // 1# Check if organization already exists
       const exists = await this.organizationRepository.findOne({
@@ -35,10 +33,11 @@ export class OrganizationService {
       }
 
       // 3# If not, create a new organization
-      const newOrganization = await this.organizationRepository.save(
-        createOrganizationDto,
-      );
-
+      const normalizedName = name.toLowerCase().trim();
+      const newOrganization = await this.organizationRepository.save({
+        ...createOrganizationDto,
+        name: normalizedName,
+      });
       // 4# Create membership
       if (newOrganization) {
         await this.userOrganizationService.create({
@@ -46,12 +45,13 @@ export class OrganizationService {
           userId: ownerId,
           role: OrganizationRole.STAFF,
         });
-      }
 
-      // 5# Create a trial subscription for the new organization
-      this.paymentsClient.emit(SUBSCRIPTION_PATTERNS.CREATE_TRIAL, {
-        organizationId: newOrganization.id,
-      });
+        await this.userOrganizationService.handleUserAuthzRefresh({
+          userId: ownerId,
+          organizationId: newOrganization.id,
+          reason: UserAuthzRefreshReason.ORGANIZATION_CREATED,
+        });
+      }
 
       return newOrganization;
     } catch (error) {
@@ -74,12 +74,11 @@ export class OrganizationService {
   }
 
   async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-    const { ownerId, ...rest } = updateOrganizationDto;
     try {
       // 1# Verify if organization exists
       const organizationUpdated = await this.organizationRepository.preload({
-        ...rest,
-        id: id,
+        ...updateOrganizationDto,
+        id,
       });
       if (!organizationUpdated) {
         RpcExceptionHelper.badRequestException(
@@ -87,13 +86,41 @@ export class OrganizationService {
         );
       }
       // 2# Save to DB
-      this.organizationRepository.save(organizationUpdated);
+      await this.organizationRepository.save(organizationUpdated);
 
       // 3# Return updated organization
       return organizationUpdated;
     } catch (error) {
       RpcExceptionHelper.handle(error);
     }
+  }
+
+  // OrganizationService
+  async clearStripeAccount(stripeAccountId: string) {
+    this.logger.log(
+      `Clearing stripeAccountId=${stripeAccountId} from organization`,
+    );
+
+    const organization = await this.organizationRepository.findOne({
+      where: { stripeAccountId },
+    });
+
+    if (!organization) {
+      this.logger.warn(
+        `clearStripeAccount: no organization found with stripeAccountId=${stripeAccountId}`,
+      );
+      return { ignored: true };
+    }
+
+    await this.organizationRepository.update(organization.id, {
+      stripeAccountId: null,
+    });
+
+    this.logger.log(
+      `Cleared stripeAccountId from organization=${organization.id}`,
+    );
+
+    return { cleared: true };
   }
 
   async softDelete(id: string) {
@@ -104,9 +131,7 @@ export class OrganizationService {
         withDeleted: true,
       });
       if (!organization) {
-        RpcExceptionHelper.badRequestException(
-          `Organization with id: ${id} not found`,
-        );
+        RpcExceptionHelper.notFound('Organization');
       }
 
       if (organization.deletedAt) {
