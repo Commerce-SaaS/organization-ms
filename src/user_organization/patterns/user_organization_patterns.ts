@@ -5,5 +5,7 @@ export const USER_ORGANIZATION_PATTERNS = {
   FIND_ALL_USER_ORGANIZATION: 'userOrganization.findAllUsersByOrganization',
   UPDATE_USER_ORGANIZATION: 'userOrganization.update',
   DELETE_USER_ORGANIZATION: 'userOrganization.delete',
-  RESTORE_USER_ORGANIZATION: 'userOrganization.restore'
+  RESTORE_USER_ORGANIZATION: 'userOrganization.restore',
+  // Event received from auth-ms when a customer has been anonymized
+  CUSTOMER_ANONYMIZED: 'customer.anonymized',
 } as const;
