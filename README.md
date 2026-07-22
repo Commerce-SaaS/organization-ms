@@ -1,274 +1,208 @@
-# 🏢 Organization Microservice (`organization-ms`)
+<h1 align="center">🏢 Organization Microservice · <code>organization-ms</code></h1>
 
-A NestJS microservice responsible for managing organizations, custom domains, memberships, and role assignments in a multi-tenant ecosystem.
+<p align="center">
+  <b>NestJS microservice</b> managing organizations, custom domains, memberships and role assignments<br/>
+  in a multi-tenant ecosystem. <i>The foundation for ownership, permissions and tenant resolution.</i>
+</p>
 
-The service communicates exclusively through RabbitMQ and provides the foundation for organization ownership, permissions, and tenant resolution across the platform.
+<p align="center">
+  <img src="https://img.shields.io/badge/NestJS-11-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-TypeORM-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Redis-authz%20cache-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
+  <img src="https://img.shields.io/badge/RabbitMQ-RPC%20%2B%20events-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white" />
+</p>
 
----
+<p align="center">
+  <img src="https://img.shields.io/badge/Transport-RabbitMQ%20only-orange?style=flat-square" />
+  <img src="https://img.shields.io/badge/Queue-organization__queue-8A2BE2?style=flat-square" />
+  <img src="https://img.shields.io/badge/Multi--tenant-yes-2E7D32?style=flat-square" />
+  <img src="https://img.shields.io/badge/Soft%20delete-supported-6C47FF?style=flat-square" />
+</p>
 
-# 📋 Table of Contents
+<br/>
 
-* Overview
-* Architecture
-* Features
-* Tech Stack
-* Getting Started
-* Environment Variables
-* RabbitMQ Patterns
-* Domain Management
-* Membership Management
-* Database Entities
-* Dependencies
-* Caching Strategy
-* Development Notes
+## 🚀 Overview
 
----
+`organization-ms` manages organization creation and lifecycle, custom domain registration, user memberships, organization roles, authorization cache generation, customer anonymization events and multi-tenant organization resolution.
 
-# 🚀 Overview
+> [!IMPORTANT]
+> The service communicates **exclusively through RabbitMQ** and acts as the central source of truth for organization ownership and user access across the platform. Every service that requires organization context ultimately depends on data managed here.
 
-`organization-ms` manages:
+<br/>
 
-* Organization creation and lifecycle
-* Custom domain registration
-* User memberships
-* Organization roles
-* Authorization cache generation
-* Customer anonymization events
-* Multi-tenant organization resolution
+## 🏗️ Architecture
 
-The service acts as the central source of truth for organization ownership and user access across the platform.
+```mermaid
+flowchart TB
+    GW["🌐 client-gateway"] -. "RabbitMQ RPC · organization_queue" .-> ORG
 
----
+    subgraph ORG["🏢 organization-ms"]
+        direction LR
+        A["Organizations"] ~~~ B["Domains"] ~~~ C["Memberships"]
+        D["Roles"] ~~~ E["Authorization cache"]
+    end
 
-# 🏗️ Architecture
-
-```text
-                   ┌──────────────────┐
-                   │   Client Gateway │
-                   └────────┬─────────┘
-                            │ RabbitMQ
-                            ▼
-
-┌─────────────────────────────────────────────┐
-│              organization-ms               │
-├─────────────────────────────────────────────┤
-│ Organizations                               │
-│ Domains                                     │
-│ Memberships                                 │
-│ Roles                                       │
-│ Authorization Cache                         │
-└──────┬───────────────┬───────────────┬──────┘
-       │               │               │
-       ▼               ▼               ▼
- PostgreSQL         Redis          RabbitMQ
+    ORG --> PG[("🐘 PostgreSQL")]
+    ORG --> REDIS[("⚡ Redis · authz cache")]
+    ORG <-. "events" .-> RMQ["🐇 RabbitMQ"]
 ```
 
----
+<br/>
 
-# ✨ Features
+## ✨ Features
 
-* Organization management
-* Custom domain support
-* Membership management
-* Role assignment
-* Multi-tenant architecture
-* Authorization cache generation
-* RabbitMQ event-driven communication
-* Soft delete support
-* Customer anonymization support
-* Redis-backed permission caching
+Organization management · custom domain support · membership management · role assignment · multi-tenant architecture · authorization cache generation · event-driven communication · soft delete support · customer anonymization support · Redis-backed permission caching.
 
----
+<br/>
 
-# 🛠 Tech Stack
+## 🛠️ Tech Stack
 
-| Category               | Technology      |
-| ---------------------- | --------------- |
-| Framework              | NestJS 11       |
-| Language               | TypeScript 5    |
-| Database               | PostgreSQL      |
-| ORM                    | TypeORM         |
-| Messaging              | RabbitMQ        |
-| Cache                  | Redis           |
-| Validation             | class-validator |
-| Environment Validation | Zod             |
-| Testing                | Jest            |
+| Category | Technology |
+|---|---|
+| Framework | NestJS 11 |
+| Language | TypeScript 5 |
+| Database | PostgreSQL |
+| ORM | TypeORM |
+| Messaging | RabbitMQ |
+| Cache | Redis |
+| Validation | class-validator |
+| Environment validation | Zod |
+| Testing | Jest |
 
----
+<br/>
 
-# ⚙️ Getting Started
+## ⚙️ Getting Started
 
-## Prerequisites
-
-* Node.js 20+
-* PostgreSQL
-* RabbitMQ
-* Redis
-
----
-
-## Installation
+**Prerequisites:** Node.js 20+, PostgreSQL, RabbitMQ, Redis.
 
 ```bash
 npm install
-
 cp .env.example .env
-
 npm run start:dev
 ```
 
----
+<details>
+<summary><b>📜 Available scripts</b></summary>
 
-## Available Scripts
+<br/>
 
 ```bash
 npm run build
-
-npm run start
-npm run start:dev
-npm run start:debug
-npm run start:prod
-
+npm run start        # start / start:dev / start:debug / start:prod
 npm run lint
 npm run format
-
-npm test
-npm run test:watch
-npm run test:cov
+npm test             # test / test:watch / test:cov
 npm run test:e2e
 ```
 
----
+</details>
 
-# 🌍 Environment Variables
+<br/>
 
-| Variable                      | Required | Description                |
-| ----------------------------- | -------- | -------------------------- |
-| NODE_ENV                      | ✅        | Environment                |
-| PORT                          | ✅        | Service port               |
-| DB_HOST                       | ✅        | PostgreSQL host            |
-| DB_PORT                       | ✅        | PostgreSQL port            |
-| POSTGRES_USER                 | ✅        | Database user              |
-| POSTGRES_PASSWORD             | ✅        | Database password          |
-| POSTGRES_DB                   | ✅        | Database name              |
-| RABBITMQ_URL                  | ✅        | RabbitMQ connection string |
-| RABBITMQ_QUEUE                | ✅        | Main queue                 |
-| RMQ_EVENTS_QUEUE_AUTHZ        | ✅        | Authorization events queue |
-| RMQ_EVENTS_QUEUE_ORGANIZATION | ✅        | Organization events queue  |
-| REDIS_HOST                    | ✅        | Redis host                 |
-| REDIS_PORT                    | ✅        | Redis port                 |
-| REDIS_PASS                    | ✅        | Redis password             |
+## 🌍 Environment Variables
 
----
+| Variable | Required | Description |
+|---|:---:|---|
+| `NODE_ENV` | ✅ | Environment |
+| `PORT` | ✅ | Service port |
+| `DB_HOST` | ✅ | PostgreSQL host |
+| `DB_PORT` | ✅ | PostgreSQL port |
+| `POSTGRES_USER` | ✅ | Database user |
+| `POSTGRES_PASSWORD` | ✅ | Database password |
+| `POSTGRES_DB` | ✅ | Database name |
+| `RABBITMQ_URL` | ✅ | RabbitMQ connection string |
+| `RABBITMQ_QUEUE` | ✅ | Main queue |
+| `RMQ_EVENTS_QUEUE_AUTHZ` | ✅ | Authorization events queue |
+| `RMQ_EVENTS_QUEUE_ORGANIZATION` | ✅ | Organization events queue |
+| `REDIS_HOST` | ✅ | Redis host |
+| `REDIS_PORT` | ✅ | Redis port |
+| `REDIS_PASS` | ✅ | Redis password |
 
-# 📨 RabbitMQ Patterns
+<br/>
 
-## Organizations
+## 📨 RabbitMQ Patterns
 
-| Pattern                   | Description              |
-| ------------------------- | ------------------------ |
-| organization.create       | Create organization      |
-| organization.find_one     | Get organization         |
-| organization.update       | Update organization      |
-| organization.update_event | Update via event         |
-| organization.stripe.clear | Remove Stripe account    |
-| organization.delete       | Soft delete organization |
+Event patterns at a glance:
 
----
+| Event | Description |
+|---|---|
+| `userOrganization.user_authz_refresh` | Refresh permissions |
+| `customer.anonymized` | Remove customer data |
 
-## Organization Domains
+<details>
+<summary><b>🏢 Organizations patterns</b></summary>
 
-| Pattern                     | Description     |
-| --------------------------- | --------------- |
-| organizationDomain.create   | Register domain |
-| organizationDomain.find_all | List domains    |
-| organizationDomain.find_one | Resolve domain  |
-| organizationDomain.update   | Update domain   |
-| organizationDomain.delete   | Delete domain   |
+<br/>
 
----
+| Pattern | Description |
+|---|---|
+| `organization.create` | Create organization |
+| `organization.find_one` | Get organization |
+| `organization.update` | Update organization |
+| `organization.update_event` | Update via event |
+| `organization.stripe.clear` | Remove Stripe account |
+| `organization.delete` | Soft delete organization |
 
-## User Organizations
+</details>
 
-| Pattern                                     | Description            |
-| ------------------------------------------- | ---------------------- |
-| userOrganization.create                     | Create membership      |
-| userOrganization.findAllOrganizationsByUser | User organizations     |
-| userOrganization.findAllUsersByOrganization | Organization users     |
-| userOrganization.update                     | Update membership      |
-| userOrganization.delete                     | Soft delete membership |
-| userOrganization.restore                    | Restore membership     |
+<details>
+<summary><b>🌐 Organization Domains patterns</b></summary>
 
----
+<br/>
 
-## Events
+| Pattern | Description |
+|---|---|
+| `organizationDomain.create` | Register domain |
+| `organizationDomain.find_all` | List domains |
+| `organizationDomain.find_one` | Resolve domain |
+| `organizationDomain.update` | Update domain |
+| `organizationDomain.delete` | Delete domain |
 
-| Pattern                             | Description          |
-| ----------------------------------- | -------------------- |
-| userOrganization.user_authz_refresh | Refresh permissions  |
-| customer.anonymized                 | Remove customer data |
+</details>
 
----
+<details>
+<summary><b>👥 User Organizations patterns</b></summary>
 
-# 🌐 Domain Management
+<br/>
 
-Organizations can register one or more custom domains.
+| Pattern | Description |
+|---|---|
+| `userOrganization.create` | Create membership |
+| `userOrganization.findAllOrganizationsByUser` | User organizations |
+| `userOrganization.findAllUsersByOrganization` | Organization users |
+| `userOrganization.update` | Update membership |
+| `userOrganization.delete` | Soft delete membership |
+| `userOrganization.restore` | Restore membership |
 
-Examples:
+</details>
 
-```text
-restaurant-a.com
-restaurant-b.fr
-app.myrestaurant.com
-```
+<br/>
 
-Domain capabilities:
+## 🌐 Domain Management
 
-* Domain registration
-* Domain validation
-* Domain lookup
-* Domain updates
-* Domain deletion
-* Tenant resolution
+Organizations can register one or more custom domains (e.g. `restaurant-a.com`, `restaurant-b.fr`, `app.myrestaurant.com`).
 
-The service normalizes domains to lowercase before storage.
+**Capabilities:** registration · validation · lookup · updates · deletion · tenant resolution. Domains are normalized to lowercase before storage.
 
----
+<br/>
 
-# 👥 Membership Management
+## 👥 Membership Management
 
-Organizations can have multiple users with different roles.
+Organizations can have multiple users with different roles — typically `OWNER`, `STAFF`, `CUSTOMER`.
 
-Typical roles:
+**Features:** create memberships · update roles · soft delete · restore · list organization members · list user organizations.
 
-```text
-OWNER
-STAFF
-CUSTOMER
-```
+<br/>
 
-Membership features:
+## 🔐 Authorization Cache
 
-* Create memberships
-* Update roles
-* Soft delete memberships
-* Restore memberships
-* List organization members
-* List user organizations
+The service maintains a Redis cache of the organizations accessible by each user.
 
----
-
-# 🔐 Authorization Cache
-
-The service maintains a Redis cache containing the organizations accessible by each user.
-
-Cache key:
-
-```text
-user:<userId>:orgs
-```
-
-Cached structure:
+| | |
+|---|---|
+| **Cache key** | `user:<userId>:orgs` |
+| **TTL** | `3600` seconds |
 
 ```json
 [
@@ -281,226 +215,73 @@ Cached structure:
 ]
 ```
 
-TTL:
+The cache rebuilds automatically when memberships are created, updated, deleted or restored, and when authorization-refresh events are received.
 
-```text
-3600 seconds
+```mermaid
+flowchart LR
+    A["👤 User creates organization"] --> B["🏢 Organization created"] --> C["👑 Owner membership created"] --> D["⚡ Redis cache rebuilt"] --> E["🔐 Authorization updated"]
 ```
 
-Cache rebuilds automatically when:
+<br/>
 
-* Memberships are created
-* Memberships are updated
-* Memberships are deleted
-* Memberships are restored
-* Authorization refresh events are received
+## 🗄️ Database Entities
 
----
+<details>
+<summary><b>View all entities</b></summary>
 
-# 🗄 Database Entities
+<br/>
 
-## Organization
+| Entity | Purpose | Main fields |
+|---|---|---|
+| **Organization** | A tenant organization | `id`, `name`, `ownerId`, `stripeAccountId`, `logoUrl`, `createdAt`, `updatedAt`, `deletedAt` |
+| **OrganizationDomain** | A custom domain attached to an organization | `id`, `organizationId`, `domain` |
+| **UserOrganization** | A membership between a user and an organization | `userId`, `organizationId`, `role`, `createdAt`, `updatedAt`, `deletedAt` |
 
-Represents a tenant organization.
+- **Organization** — soft delete support, Stripe Connect integration, multi-domain support.
+- **UserOrganization** — soft delete support, role assignment, cache synchronization.
 
-Main fields:
+</details>
 
-* id
-* name
-* ownerId
-* stripeAccountId
-* logoUrl
-* createdAt
-* updatedAt
-* deletedAt
+<br/>
 
-Capabilities:
+## 🔗 External Dependencies
 
-* Soft delete support
-* Stripe Connect integration
-* Multi-domain support
+| Dependency | Usage |
+|---|---|
+| 🐘 **PostgreSQL** | Stores organizations, domains, memberships |
+| ⚡ **Redis** | Authorization cache + membership cache invalidation |
+| 🐇 **RabbitMQ** | RPC + event-driven communication, authorization refresh, customer anonymization (listens on multiple queues) |
 
----
+<br/>
 
-## OrganizationDomain
+## 🏢 Multi-Tenant Resolution
 
-Represents a custom domain attached to an organization.
+Tenant resolution is performed through organization domains, allowing multiple organizations to share the same platform while keeping complete data isolation:
 
-Main fields:
-
-* id
-* organizationId
-* domain
-
-Examples:
-
-```text
-restaurant.com
-orders.restaurant.com
-mybrand.fr
+```mermaid
+flowchart LR
+    D["🌐 pizza-paris.com"] --> L["🔎 Organization lookup"] --> O["🏢 organizationId"]
 ```
 
----
+<br/>
 
-## UserOrganization
+## ⚠️ Development Notes / Limitations
 
-Represents a membership between a user and an organization.
+> [!WARNING]
+> Tracked openly and worth verifying before production.
 
-Main fields:
+- **Unused patterns:** `organization.find_all` and `organization.restore` exist in constants but currently have no handlers.
+- **Package name mismatch:** the folder is `organization-ms` but the `package.json` name is `membership-ms` — should be standardized.
+- **Env example:** `.env.example` is missing `REDIS_PASS`, which the application requires at startup.
+- **Testing:** Jest configuration and test scripts exist, but no active test files are present.
+- **RabbitMQ client:** a payments event client is registered but currently unused by the application.
 
-* userId
-* organizationId
-* role
-* createdAt
-* updatedAt
-* deletedAt
+<br/>
 
-Capabilities:
+## 📈 Service Scope
 
-* Soft delete support
-* Role assignment
-* Cache synchronization
+The organizational backbone of the platform — organization lifecycle management, domain ownership, user memberships, role management, authorization caching and multi-tenant resolution.
 
----
-
-# 🔗 External Dependencies
-
-## PostgreSQL
-
-Stores:
-
-* Organizations
-* Domains
-* Memberships
-
----
-
-## Redis
-
-Used for:
-
-* Authorization cache
-* Membership cache invalidation
-
----
-
-## RabbitMQ
-
-Used for:
-
-* RPC communication
-* Event-driven communication
-* Authorization refresh events
-* Customer anonymization events
-
-The service listens on multiple queues to process organization and authorization events.
-
----
-
-# 🔄 Service Flow
-
-```text
-User Creates Organization
-            │
-            ▼
-Organization Created
-            │
-            ▼
-Owner Membership Created
-            │
-            ▼
-Redis Cache Rebuilt
-            │
-            ▼
-Authorization Updated
-```
-
----
-
-# 🏢 Multi-Tenant Resolution
-
-Tenant resolution is performed through organization domains.
-
-Example:
-
-```text
-pizza-paris.com
-        │
-        ▼
-Organization Lookup
-        │
-        ▼
-organizationId
-```
-
-This allows multiple organizations to share the same platform while maintaining complete data isolation.
-
----
-
-# ⚠️ Development Notes
-
-## Current Limitations
-
-### Unused Patterns
-
-The following patterns exist in constants but currently have no handlers:
-
-* organization.find_all
-* organization.restore
-
----
-
-### Package Name Mismatch
-
-Current repository contains:
-
-```text
-Folder:
-organization-ms
-
-Package Name:
-membership-ms
-```
-
-This should be standardized.
-
----
-
-### Environment Example
-
-`.env.example` is missing:
-
-```text
-REDIS_PASS
-```
-
-but the application requires it at startup.
-
----
-
-### Testing
-
-The project includes Jest configuration and test scripts, but no active test files are currently present in the repository.
-
----
-
-### RabbitMQ Client Registration
-
-A payments event client is registered but currently unused by the application.
-
----
-
-# 📈 Service Scope
-
-This service acts as the organizational backbone of the platform.
-
-Responsibilities include:
-
-* Organization lifecycle management
-* Domain ownership
-* User memberships
-* Role management
-* Authorization caching
-* Multi-tenant resolution
-
-Every service that requires organization context ultimately depends on data managed by `organization-ms`.
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=80&section=footer" />
+</p>
