@@ -17,13 +17,12 @@ export class OrganizationDomainsController {
   }
 
   @MessagePattern(ORGANIZATION_DOMAIN_PATTERNS.FIND_ALL)
-  findAll(organizationId: string) {
-    return this.organizationDomainsService.findAll(organizationId);
+  findAll(@Payload() payload: { organizationId: string }) {
+    return this.organizationDomainsService.findAll(payload.organizationId);
   }
-
   @MessagePattern(ORGANIZATION_DOMAIN_PATTERNS.FIND_ONE)
-  findOne(@Payload() dto: { domain: string }) {
-    return this.organizationDomainsService.findOne(dto.domain);
+  findOne(@Payload() dto: { id: string }) {
+    return this.organizationDomainsService.findOne(dto.id);
   }
 
   @MessagePattern(ORGANIZATION_DOMAIN_PATTERNS.UPDATE)
@@ -32,7 +31,7 @@ export class OrganizationDomainsController {
   }
 
   @MessagePattern(ORGANIZATION_DOMAIN_PATTERNS.DELETE)
-  remove(@Payload() id: string) {
-    return this.organizationDomainsService.remove(id);
+  remove(@Payload() dto: { id: string }) {
+    return this.organizationDomainsService.remove(dto.id);
   }
 }

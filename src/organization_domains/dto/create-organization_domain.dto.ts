@@ -7,12 +7,4 @@ export class CreateOrganizationDomainDto {
   @IsString()
   @MaxLength(255)
   domain: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isPrimary?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 }

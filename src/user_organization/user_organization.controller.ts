@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { UserOrganizationService } from './user_organization.service';
 import { CreateUserOrganizationDto } from './dto/create-user_organization.dto';
@@ -8,6 +8,8 @@ import { UserAuthzRefreshDto } from './dto/user_authz_refresh_event.dto';
 
 @Controller()
 export class UserOrganizationController {
+  private readonly logger = new Logger(UserOrganizationController.name);
+
   constructor(
     private readonly userOrganizationService: UserOrganizationService,
   ) {}
@@ -46,6 +48,25 @@ export class UserOrganizationController {
 
   @EventPattern(USER_ORGANIZATION_PATTERNS.USER_AUTHZ_REFRESH)
   handleUserAuthzRefresh(@Payload() data: UserAuthzRefreshDto) {
+    this.logger.log(
+      `[AUTHZ-FLOW] handleUserAuthzRefresh: received userId=${data.userId} organizationId=${data.organizationId} reason=${data.reason}`,
+    );
     return this.userOrganizationService.handleUserAuthzRefresh(data);
+  }
+
+  // Received from auth-ms after a customer is anonymized.
+  // Soft-deletes all membership rows and clears the Redis org cache.
+  @EventPattern(USER_ORGANIZATION_PATTERNS.CUSTOMER_ANONYMIZED)
+  async handleCustomerAnonymized(@Payload() data: { userId: string }) {
+    try {
+      await this.userOrganizationService.anonymizeCustomerMemberships(
+        data.userId,
+      );
+    } catch (error) {
+      // Log and swallow — a failure here must not crash the RabbitMQ consumer.
+      this.logger.error(
+        `customer.anonymized: failed for userId=${data.userId}: ${error?.message}`,
+      );
+    }
   }
 }

@@ -1,8 +1,18 @@
-import { Organization } from "src/organization/entities/organization.entity";
-import { Entity, Unique, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
+import { Organization } from 'src/organization/entities/organization.entity';
+import {
+  Entity,
+  Unique,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+} from 'typeorm';
 
 @Entity({ name: 'organization_domains' })
-@Unique(['domain', 'organizationId'])
+@Unique(['domain'])
 export class OrganizationDomain {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -15,14 +25,11 @@ export class OrganizationDomain {
   organization: Organization;
 
   @Column({ type: 'varchar', length: 255 })
-  domain: string; 
+  domain: string;
 
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @DeleteDateColumn()
-  deletedAt: Date;
 }

@@ -15,8 +15,8 @@ export class OrganizationController {
   }
 
   @MessagePattern(ORGANIZATION_PATTERNS.FIND_ONE)
-  findOne(@Payload() id: string) {
-    return this.organizationService.findOne(id);
+  findOne(@Payload() dto: { id: string }) {
+    return this.organizationService.findOne(dto.id);
   }
 
   @MessagePattern(ORGANIZATION_PATTERNS.UPDATE)
@@ -27,16 +27,21 @@ export class OrganizationController {
     );
   }
 
-  @EventPattern(ORGANIZATION_PATTERNS.UPDATE)
+  @EventPattern(ORGANIZATION_PATTERNS.UPDATE_EVENT)
   updateEvent(@Payload() updateOrganizationDto: UpdateOrganizationDto) {
     return this.organizationService.update(
       updateOrganizationDto.id,
       updateOrganizationDto,
     );
   }
+  
+  @EventPattern(ORGANIZATION_PATTERNS.CLEAR_STRIPE_ACCOUNT)
+  clearStripeAccount(@Payload() dto: { stripeAccountId: string }) {
+    return this.organizationService.clearStripeAccount(dto.stripeAccountId);
+  }
 
   @MessagePattern(ORGANIZATION_PATTERNS.DELETE)
-  softDelete(@Payload() id: string) {
-    return this.organizationService.softDelete(id);
+  softDelete(@Payload() dto: { id: string }) {
+    return this.organizationService.softDelete(dto.id);
   }
 }

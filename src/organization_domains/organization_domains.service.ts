@@ -60,13 +60,18 @@ export class OrganizationDomainsService {
 
     const domainRecord = await this.organizationDomainRepository.findOne({
       where: { domain: normalized },
+      relations: { organization: true },
     });
 
-    if (!domainRecord) {
-      RpcExceptionHelper.notFound('Domain');
+    if (!domainRecord?.organization) {
+      return null;
     }
 
-    return domainRecord;
+    return {
+      organizationId: domainRecord.organizationId,
+      logoUrl: domainRecord.organization.logoUrl,
+      name: domainRecord.organization.name,
+    };
   }
 
   async update(updateDto: UpdateOrganizationDomainDto) {
@@ -82,7 +87,7 @@ export class OrganizationDomainsService {
       });
 
       if (duplicated && duplicated.id !== id) {
-        throw RpcExceptionHelper.duplicate('Domain');
+        RpcExceptionHelper.duplicate('Domain');
       }
 
       existing.domain = normalized;
@@ -91,7 +96,7 @@ export class OrganizationDomainsService {
     try {
       return await this.organizationDomainRepository.save(existing);
     } catch (error) {
-      throw RpcExceptionHelper.handle(error);
+      RpcExceptionHelper.handle(error);
     }
   }
 
@@ -116,13 +121,15 @@ export class OrganizationDomainsService {
     }
   }
 
-  private async getDomainByIdOrFail(id: string) {
+  private async getDomainByIdOrFail(id: string, organizationId?: string) {
     const domainRecord = await this.organizationDomainRepository.findOne({
       where: { id },
     });
 
-    if (!domainRecord) {
-      RpcExceptionHelper.notFound('Domain');
+    if (!domainRecord) RpcExceptionHelper.notFound('Domain');
+
+    if (organizationId && domainRecord.organizationId !== organizationId) {
+      RpcExceptionHelper.forbidden('You do not have access to this domain');
     }
 
     return domainRecord;
